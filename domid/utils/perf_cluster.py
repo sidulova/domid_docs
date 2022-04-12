@@ -126,7 +126,10 @@ class PerfCluster(PerfClassif):
                 list_vec_labels.append(d_s)
                 if i > max_batches:
                     break
-        # FIXME: need to check cluster assignment orders. the domain label is never used in training. so we need to find correspondence between predicted and true domain indices. See top of this file.
+                
+        # The domain label are never used in training. so we need to find
+        # correspondence between predicted and true domain indices. See top of
+        # this file for an explanation.
 
         # What is the best permutation?
         row_ind, col_ind = linear_sum_assignment(cost)

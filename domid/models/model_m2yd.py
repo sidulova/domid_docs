@@ -3,13 +3,15 @@ import torch.nn as nn
 import torch.distributions as dist
 import torch.nn.functional as F
 
-from libdg.compos.nn_net import Net_MNIST
 from libdg.utils.utils_class import store_args
 from libdg.compos.vae.compos.decoder_concat_vec_reshape_conv_gated_conv \
     import DecoderConcatLatentFCReshapeConvGatedConv
 from libdg.compos.vae.compos.encoder import LSEncoderDense
 from libdg.models.a_model_classif import AModelClassif
 from libdg.utils.utils_classif import logit2preds_vpic, get_label_na
+
+from domid.compos.nn_net import Net_MNIST
+
 
 class ModelXY2D(AModelClassif):
     """
@@ -40,10 +42,10 @@ class ModelXY2D(AModelClassif):
     FIXME: original M2 has prior Gaussian(0, I) for $z_d$, will this hinder learning of $z_d$
     on each component since the prior is draging each component to zero.
     """
+
     @store_args
     def __init__(self, list_str_y, y_dim, zd_dim, gamma_y, device,
-                 i_c, i_h, i_w,
-                 dim_feat_x=10, list_str_d=None):
+                 i_c, i_h, i_w, dim_feat_x=10, list_str_d=None):
         """
         :param y_dim: classification task class-label dimension
         :param zd_dim: dimension of latent variable $z_d$ dimension
@@ -68,7 +70,7 @@ class ModelXY2D(AModelClassif):
         """
         return self.infer_y_from_x(tensor_x)
 
-    def infer_y_vpicn(self, tensor):
+    def infer_y_vpicn(self, tensor_x):
         """
         Returns
         -------
@@ -84,7 +86,7 @@ class ModelXY2D(AModelClassif):
             class label for the maximum probability class
         """
         with torch.no_grad():
-            logit_y = self.infer_y_from_x(tensor)
+            logit_y = self.infer_y_from_x(tensor_x)
         vec_one_hot, prob, ind, confidence = logit2preds_vpic(logit_y)
         na_class = get_label_na(ind, self.list_str_y)
         return vec_one_hot, prob, ind, confidence, na_class
@@ -110,7 +112,6 @@ class ModelXY2D(AModelClassif):
         z_con = torch.cat((zd_q, y), dim=1)  # FIXME: pay attention to order
 
         nll, x_mean, x_logvar = self.decoder(z_con, x)
-        #
         pzd_loc = torch.zeros(1, self.zd_dim).to(self.device)
         pzd_scale = torch.ones(self.zd_dim).to(self.device)
         pzd = dist.Normal(pzd_loc, pzd_scale)

@@ -17,7 +17,9 @@ class NodeAlgoBuilderVaDE(NodeAlgoBuilder):
         args = exp.args
         device = get_device(args.nocu)
         # FIXME: add the nevessary function arguments:
-        model = ModelVaDE(device=device)
+
+        #model = ModelVaDE(device=device, args=args)
+        model = ModelVaDE(y_dim=y_dim, zd_dim=zd_dim, device=device)
         observer = ObVisitorCleanUp(
             ObVisitorClusteringOnly(exp, MSelOracleVisitor(MSelTrLoss(max_es=args.es)), device))
         trainer = TrainerBasic(model, task, observer, device, aconf=args)

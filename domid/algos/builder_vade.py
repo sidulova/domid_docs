@@ -21,7 +21,7 @@ class NodeAlgoBuilderVaDE(NodeAlgoBuilder):
         y_dim=len(task.list_str_y)
         print('y dim in builder', y_dim)
         zd_dim = args.zd_dim
-        y_dim = len(task.list_str_y),
+        #y_dim = len(task.list_str_y),
 
 
 

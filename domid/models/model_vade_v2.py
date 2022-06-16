@@ -4,6 +4,7 @@ import torch.distributions as dist
 import torch.nn.functional as F
 import os
 import itertools
+#import toml
 import numpy as np
 from sklearn.mixture import GaussianMixture
 import tqdm
@@ -42,45 +43,62 @@ def cluster_acc(Y_pred, Y):
 
 def block(in_c,out_c):
     layers=[
-        # nn.Linear(in_c,out_c),
-        # nn.ReLU(True)
-        nn.Conv2d(3, 1, (22,28)) #n_channels, out_channels, kernel_size,
+        nn.Linear(in_c,out_c),
+        nn.ReLU(True)
+        #nn.Conv2d(3, 1, (22,28)) #n_channels, out_channels, kernel_size,
         #nn.MaxPool2d(2, 2)
     ]
+    # 28 x 28
+    # 22 x 28
+    # 6 tomes (5, 5)
+    # output of 7 x 1
+    # flatten 28, 28 - apply linear - chec
+    # one sample output fr
     return layers
-def block2(in_c,out_c):
-    layers=[
-        # nn.Linear(in_c,out_c),
-        # nn.ReLU(True)
-        nn.ConvTranspose2d(1, 3, (28,22)) #n_channels, out_channels, kernel_size,
-        #nn.MaxPool2d(2, 2)
-    ]
-    return layers
+# def block2(in_c,out_c):
+#     layers=[
+#         # nn.Linear(in_c,out_c),
+#         # nn.ReLU(True)
+#         nn.ConvTranspose2d(1, 3, (28,22)) #n_channels, out_channels, kernel_size,
+#         #nn.MaxPool2d(2, 2)
+#     ]
+#
+#     return layers
 
 class Encoder(nn.Module):
-    def __init__(self,z_dim, dim_input,filter1, filter2, filter3=100):
+    def __init__(self,z_dim, dim_input = 784,filter1=28, filter2=14, filter3=10):
         super(Encoder,self).__init__()
         print('before seq')
-
-
+        #[100, 7]
+        print(filter1, filter2, filter3, z_dim)
         self.encod=nn.Sequential(
-            *block(dim_input,filter1)
-            #*block(filter1,filter2),
-            #*block(filter2,filter3)
+            *block(dim_input, filter1),
+            *block(filter1, filter2),
+            *block(filter2,filter3)
         )
-        print('after convolution')
-        # self.mu_l=nn.Linear(filter3,z_dim)
-        # self.log_sigma2_l=nn.Linear(filter3,z_dim)
-        self.mu_l=nn.Linear(z_dim,z_dim)
-        self.log_sigma2_l=nn.Linear(z_dim,z_dim)
+        print('after seq')
+
+        self.mu_l= nn.Linear(filter3,z_dim)
+        self.log_sigma2_l= nn.Linear(filter3,z_dim)
+        # self.log_sigma2_l=nn.Linear(z_dim,z_dim)
+        # self.mu_l=nn.Linear(z_dim,z_dim)
 
     def forward(self, x):
         print('I was in the encoder', x.shape)
+
+        #x = torch.flatten(x[:, 0, :, :])
+        x = torch.reshape(x,(x.shape[0], 3, 28*28))
+        x = x[:, 0, :]
+        #breakpoint()
+        # git check out --
+        # git status
+        # undo the files roll back
         # input to encoder torch.Size([100, 20])
         e=self.encod(x) #output shape: [batch_size, z_dim] [800x2000]
-        e = torch.reshape(e, (100,7)) #FIXME
+        #e = torch.reshape(e, (100,7)) #FIXME
         print('HEREEEEEEEEEEEEEEEEEEEEEEEEEEEEEE', e.shape, 'should be [100, 10]')
         mu=self.mu_l(e) #output shape: [batch_size, num_clusters]
+
         log_sigma2=self.log_sigma2_l(e) #same as mu shape
         print('shapes in the encder', e.shape, mu.shape, log_sigma2.shape)
 
@@ -94,14 +112,14 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self,z_dim, dim_input,filter1, filter2, filter3):
+    def __init__(self,z_dim, dim_input=784,filter1=28, filter2=14, filter3=10):
         super(Decoder,self).__init__()
 
         self.decod=nn.Sequential(
-            *block2(z_dim,dim_input),
-            #*block(filter3,filter2),
-            #*block(filter2,filter1),
-            #nn.Linear(filter1,dim_input),
+            *block(z_dim,filter3),
+            *block(filter3,filter2),
+            *block(filter2,filter1),
+            nn.Linear(filter1,dim_input),
             nn.Sigmoid()
         )
 
@@ -113,12 +131,17 @@ class Decoder(nn.Module):
         Decoder input shape is [batch_size, 10]
         """
         print('decoder shape', z.shape)
-        z = torch.unsqueeze(z,1)
-        z = torch.unsqueeze(z, 1)
+        #z = torch.unsqueeze(z,1)
+        #z = torch.unsqueeze(z, 1)
         #inital input [100, 3, 28, 28]
         print('z shape in the decoder', z.shape)
-        #print('decoder input shape', z.shape)
+        print('decoder input shape', z.shape)
         x_pro=self.decod(z)
+        x_pro = torch.reshape(x_pro, (x_pro.shape[0], 1, 28, 28))
+        #x_pro.repeat(3)
+        x_pro = torch.cat((x_pro, x_pro, x_pro), 1)
+        print(x_pro[2:3, :,0, 0])
+        print('decoder out', x_pro.shape)
 
         return x_pro
 
@@ -130,9 +153,11 @@ class ModelVaDE(nn.Module):
         #                           i_h = task.isize.h, i_w = task.isize.w, gamma_y = args.gamma_y,list_str_y = task.list_str_y
         super(ModelVaDE,self).__init__()
         #self.args = args
-        self.y_dim = y_dim[0]
-        self.z_dim = zd_dim
+        print('y_dim in VADE MODEL', y_dim)
+        self.y_dim = y_dim #nClusters
+        self.z_dim = zd_dim #nClusters in latent space - used to define the shope out of encoder
         self.zd_dim = zd_dim
+
         self.dim_y = y_dim #???? dim_y or y_dim
         self.i_h = i_h
         self.i_w = i_w
@@ -152,17 +177,17 @@ class ModelVaDE(nn.Module):
         #self.infer_domain = Encoder(z_dim=zd_dim, dim_input=self.dim_feat_x+self.y_dim).to(device)
         #self.encoder = Encoder(z_dim=zd_dim, dim_input=self.dim_feat_x + self.y_dim).to(device)
         #self.decoder=Decoder(z_dim=zd_dim, dim_input=self.dim_feat_x+self.y_dim).to(device)
-        input_dimention =3 #FIXME: only square images?
+        input_dimention =28*28 #FIXME: only square images?
         print('LATENT SPACE FEAT', zd_dim)
 
-        self.infer_domain = Encoder(z_dim=zd_dim, dim_input=input_dimention, filter1 = 1,filter2 = 1,filter3= 1).to(device)
-        self.encoder = Encoder(z_dim=zd_dim, dim_input=input_dimention, filter1 = 1,filter2 = 1,filter3= 1).to(device)
-        self.decoder = Decoder(z_dim=zd_dim, dim_input=input_dimention, filter1 = 1,filter2 = 1,filter3=1).to(device)
+        self.infer_domain = Encoder(z_dim=zd_dim, dim_input=input_dimention, filter1 = 28,filter2 = 14,filter3= 10).to(device)
+        self.encoder = Encoder(z_dim=zd_dim, dim_input=input_dimention, filter1 = 28,filter2 = 14,filter3= 10).to(device)
+        self.decoder = Decoder(z_dim=zd_dim, dim_input=input_dimention, filter1 = 28,filter2 =14,filter3=10).to(device)
 
 
-        self.pi_=nn.Parameter(torch.FloatTensor(y_dim[0],).fill_(1)/y_dim[0],requires_grad=True) # 1/ndomains
-        self.mu_c=nn.Parameter(torch.FloatTensor(y_dim[0],zd_dim).fill_(0),requires_grad=True)
-        self.log_sigma2_c=nn.Parameter(torch.FloatTensor(y_dim[0],zd_dim).fill_(0),requires_grad=True)
+        self.pi_=nn.Parameter(torch.FloatTensor(zd_dim,).fill_(1)/zd_dim,requires_grad=True) # 1/ndomains
+        self.mu_c=nn.Parameter(torch.FloatTensor(zd_dim,zd_dim).fill_(0),requires_grad=True)
+        self.log_sigma2_c=nn.Parameter(torch.FloatTensor(zd_dim,zd_dim).fill_(0),requires_grad=True)
         print('ELBO INIT VARIABLES', self.pi_.shape, self.mu_c.shape, self.log_sigma2_c.shape)
         # torch.Size([10]), torch.Size([10, 7]), torch.Size([10, 7]) [y_dim, zdim]
         # In vade ELBO INIT VARIABLES torch.Size([10]) torch.Size([10, 10]) torch.Size([10, 10])
@@ -250,23 +275,29 @@ class ModelVaDE(nn.Module):
         print('i was here')
         z_mu, z_sigma2_log = self.encoder(x)
         #print(z_mu, z_sigma2_log)
-        print(' iwas here 2')
+        print(' i was here 2')
         z = torch.randn_like(z_mu) * torch.exp(z_sigma2_log / 2) + z_mu
         pi = self.pi_
         log_sigma2_c = self.log_sigma2_c
         mu_c = self.mu_c
-        nClusters = self.y_dim
+        nClusters = self.zd_dim #FIXME
+        #nClusters = 10
+        #breakpoint()
         yita_c = torch.exp(torch.log(pi.unsqueeze(0))+self.gaussian_pdfs_log(nClusters,z,mu_c,log_sigma2_c)) #shape [batch_size, 10]
         yita = yita_c.cpu()
+
         print('x shape in infer d v', x.shape)
         #print('yitac shape', yita_c.shape)
+
         #yita=yita_c.detach().cpu().numpy() #shape: [batch_size, 10]
         #yita = np.reshape(yita, (x.shape[0], x.shape[2], self.zd_dim, self.y_dim))  # FIXME
         print('predict function, yita', yita_c.shape, yita.shape)
-        print('predict function output', np.argmax(yita,axis=1).shape)
+        #print('predict function output', np.argmax(yita,axis=1))
         #print(yita)
-        #logit2preds_vpic(np.argmax(yita,axis=1))
-        return np.argmax(yita,axis=1) #number 0-9, shape [batch_size,]
+        #breakpoint()
+
+        prediction, *_ = logit2preds_vpic(yita)
+        return prediction #np.argmax(yita,axis=1) #number 0-9, shape [batch_size,] #OUTPUT the cluster [batch size, zd_dim]
         #needs to be [100, ]
 
 
@@ -299,7 +330,7 @@ class ModelVaDE(nn.Module):
         z = torch.randn_like(z_mu) * torch.exp(z_sigma2_log / 2) + z_mu
         yita_c=torch.exp(torch.log(pi.unsqueeze(0))+self.gaussian_pdfs_log(zd_dim, z,mu_c,log_sigma2_c))+det
         yita_c=yita_c/(yita_c.sum(1).view(-1,1))#batch_size*Clusters
-        print(yita_c.shape, z_sigma2_log.shape, z_mu.shape)
+        print('yita elbo loss', yita_c.shape, z_sigma2_log.shape, z_mu.shape)
         # # 10,7
         # z_sigma2_log= z_sigma2_log[:, :, 0:10, 0:7]
         # z_mu=z_mu[:,:, 0:10, 0:7]
@@ -310,7 +341,7 @@ class ModelVaDE(nn.Module):
 
         Loss-=torch.mean(torch.sum(yita_c*torch.log(pi.unsqueeze(0)/(yita_c)),1))+0.5*torch.mean(torch.sum(1+z_sigma2_log,1))
 
-
+        print('loss out', Loss)
         return Loss
 
 
@@ -367,13 +398,14 @@ class ModelVaDE(nn.Module):
     #     return q_zd, zd_q #, y_hat_logit
 
 
-    def cal_loss(cls, x, y, L, d=None):
+    def cal_loss(self, x, zd_dim=7):
         print('i was in the cal_loss')
-        y_dim = 10
+        #infer_d_v(x)
         #q_zd, zd_q = cls.forward(x, y)
         #print('q zd and zd q shapes', q_zd.shape, zd_q.shape, x.shape)
+        #breakpoint()
+        loss = self.ELBO_Loss(zd_dim, x)
 
-        loss = cls.ELBO_Loss(y_dim, x)
         #L += loss.detach().cpu().numpy()
         loss = loss.cpu()
         print(loss.shape)

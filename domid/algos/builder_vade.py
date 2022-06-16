@@ -19,7 +19,7 @@ class NodeAlgoBuilderVaDE(NodeAlgoBuilder):
         device = get_device(args.nocu)
         # FIXME: add the nevessary function arguments:
         y_dim=len(task.list_str_y)
-        print(y_dim)
+        print('y dim in builder', y_dim)
         zd_dim = args.zd_dim
         y_dim = len(task.list_str_y),
 

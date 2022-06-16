@@ -116,7 +116,7 @@ class Decoder(nn.Module):
         z = torch.unsqueeze(z,1)
         z = torch.unsqueeze(z, 1)
         #inital input [100, 3, 28, 28]
-        print(z.shape)
+        print('z shape in the decoder', z.shape)
         #print('decoder input shape', z.shape)
         x_pro=self.decod(z)
 
@@ -258,7 +258,7 @@ class ModelVaDE(nn.Module):
         nClusters = self.y_dim
         yita_c = torch.exp(torch.log(pi.unsqueeze(0))+self.gaussian_pdfs_log(nClusters,z,mu_c,log_sigma2_c)) #shape [batch_size, 10]
         yita = yita_c.cpu()
-        print(x.shape)
+        print('x shape in infer d v', x.shape)
         #print('yitac shape', yita_c.shape)
         #yita=yita_c.detach().cpu().numpy() #shape: [batch_size, 10]
         #yita = np.reshape(yita, (x.shape[0], x.shape[2], self.zd_dim, self.y_dim))  # FIXME
@@ -291,7 +291,7 @@ class ModelVaDE(nn.Module):
 
         L_rec/=L
         Loss=L_rec*x.size(1)
-
+        
         pi=self.pi_
         log_sigma2_c=self.log_sigma2_c
         mu_c=self.mu_c
@@ -330,7 +330,7 @@ class ModelVaDE(nn.Module):
         subhelper function just one gausian pdf log calculation, used as a basis for gaussia_pdfs_logs function
 
         """
-        print(log_sigma2.shape, x.shape, mu.shape)
+        print('variables in the gaussian pdf log', log_sigma2.shape, x.shape, mu.shape)
         #x=x[:, :, :,0:7] #FIXME
         #print(x.shape)
         return -0.5*(torch.sum(np.log(np.pi*2)+log_sigma2+(x-mu).pow(2)/torch.exp(log_sigma2),1))
@@ -356,20 +356,22 @@ class ModelVaDE(nn.Module):
     #     return vec_one_hot2
 
 
-    def forward(self, tensor_x, vec_y, vec_d=None):
-        print('foward', tensor_x.shape)
-        y_hat_logit = self.predict(tensor_x)
-
-        feat_x = self.feat_x2concat_y(tensor_x)
-        feat_y_x = torch.cat((y_hat_logit, feat_x), dim=1)
-        q_zd, zd_q = self.infer_domain(feat_y_x)
-
-        return q_zd, zd_q, y_hat_logit
+    # def forward(self, tensor_x, vec_y, vec_d=None):
+    #     print('foward', tensor_x.shape)
+    #     #y_hat_logit = self.predict(tensor_x)
+    #
+    #     #feat_x = self.feat_x2concat_y(tensor_x)
+    #     #feat_y_x = torch.cat((y_hat_logit, feat_x), dim=1)
+    #     q_zd, zd_q = self.infer_domain(tensor_x)
+    #
+    #     return q_zd, zd_q #, y_hat_logit
 
 
     def cal_loss(cls, x, y, L, d=None):
-
+        print('i was in the cal_loss')
         y_dim = 10
+        #q_zd, zd_q = cls.forward(x, y)
+        #print('q zd and zd q shapes', q_zd.shape, zd_q.shape, x.shape)
 
         loss = cls.ELBO_Loss(y_dim, x)
         #L += loss.detach().cpu().numpy()

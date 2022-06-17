@@ -40,6 +40,7 @@ class ObVisitorClustering(ObVisitor):
 
             acc_val, conf_mat_val = PerfCluster.cal_acc(self.host_trainer.model, self.loader_val, self.device)
             self.acc_val = acc_val
+
             print("clustering validation acc: ", acc_val)
             print(conf_mat_val)
         return super().update(epoch)
@@ -51,14 +52,7 @@ class ObVisitorClustering(ObVisitor):
         #breakpoint()
 
         super().after_all()
-        print("generating images for final model at last epoch")
-        #fun_gen(subfolder_na=self.exp.visitor.model_name + "final",
-         #       args=self.exp.args, node=self.exp.task, model=self.host_trainer.model, device=self.device)
-
-
         self.exp.visitor.save(self.host_trainer.model, "final")
-        #super().after_all()
-        #self.after_all()
         model_ld = self.exp.visitor.load()
 
         model_ld = model_ld.to(self.device)

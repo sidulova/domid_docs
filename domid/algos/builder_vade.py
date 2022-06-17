@@ -25,15 +25,13 @@ class NodeAlgoBuilderVaDE(NodeAlgoBuilder):
 
 
 
-        #model = ModelVaDE(device=device, args=args)
         model = ModelVaDE(y_dim=y_dim, zd_dim=zd_dim, device=device,  i_c = task.isize.c,
                           i_h = task.isize.h, i_w = task.isize.w, gamma_y = args.gamma_y,list_str_y = task.list_str_y, dim_feat_x = 10)
-        print('MODEL COMPILED')
         observer = ObVisitorCleanUp(
             ObVisitorClustering(exp, MSelOracleVisitor(MSelTrLoss(max_es=args.es)), device))
-        print('OBSERVER DONE')
+
         trainer = TrainerVADE(model, task, observer, device, aconf=args)
-        print('TRAINER DONE')
+
         return trainer
 
 

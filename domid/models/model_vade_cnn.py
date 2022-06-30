@@ -267,8 +267,8 @@ class ModelVaDECNN(nn.Module):
 
         #Z = torch.cat(z, 0)#.detach().cpu().numpy()
         #Y = torch.cat(Y, 0)#.detach().numpy()
-        with torch.no_grad():
-            Z = z.detach().numpy()
+        #with torch.no_grad():
+        Z = z.detach().numpy()
         nClusters = self.zd_dim
         gmm = GaussianMixture(n_components=nClusters, covariance_type='diag')
 

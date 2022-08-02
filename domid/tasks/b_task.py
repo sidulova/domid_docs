@@ -6,7 +6,7 @@ import torch
 from torch.utils.data.dataset import ConcatDataset
 
 from libdg.tasks.a_task import NodeTaskDGClassif
-from libdg.tasks.utils_task import mk_loader, mk_onehot, DsetDomainVecDecorator
+from libdg.tasks.utils_task import mk_loader, mk_onehot, DsetDomainVecDecorator, DsetDomainVecDecoratorImgPath
 from libdg.tasks.utils_task_dset import DsetIndDecorator4XYD
 
 
@@ -53,44 +53,19 @@ class NodeTaskDict(NodeTaskDGClassif):
         self.dict_dset = dict()
         self.dict_dset_val = dict()
         dim_d = len(list_domain_tr)
+        D_tr =[]
+        D_val = []
         for (ind_domain_dummy, na_domain) in enumerate(list_domain_tr):
             dset_tr, dset_val = self.get_dset_by_domain(args, na_domain)
-            # FIXME: currently, different task has different default values for
-            # split, for TaskFolder split default to False, for mnist, split
-            # default to True
-            vec_domain = mk_onehot(dim_d, ind_domain_dummy)
+            D_tr+=dset_tr
+            D_val += dset_val
+        ddset_mix = D_tr
 
-            # machine = []
-            # img_loc = []
-            # for i in range(len(dset_tr)):
-            #     machine.append(dset_tr[i][2])
-            #     img_loc.append(dset_tr[i][3])
-            # #breakpoint()
-            # ddset_tr = DsetDomainVecDecorator(dset_tr, vec_domain, na_domain)
-            #
-            # ddset_val = DsetDomainVecDecorator(dset_val, vec_domain, na_domain)
-            ddset_tr = dset_tr
-            ddset_val = dset_val
-            # ddset_tr = dset_decoration_args_algo(args, ddset_tr)
-            # ddset_val = dset_decoration_args_algo(args, ddset_val)
-            self.dict_dset.update({na_domain: ddset_tr})
-            self.dict_dset_val.update({na_domain: ddset_val})
-        ddset_mix = ConcatDataset(tuple(self.dict_dset.values()))
         self._loader_tr = mk_loader(ddset_mix, args.bs)
-
-        ddset_mix_val = ConcatDataset(tuple(self.dict_dset_val.values()))
+        ddset_mix_val = D_val
         self._loader_val = mk_loader(ddset_mix_val, args.bs)
-
-        self.dict_dset_te = dict()
-        # No need to have domain Label for test
-        for na_domain in list_domain_te:
-            dset_te, *_ = self.get_dset_by_domain(args, na_domain, split=False)
-            # FIXME: since get_dset_by_domain always return two datasets,
-            # train and validation, this is not needed in test domain
-            self.dict_dset_te.update({na_domain: dset_te})
-        dset_te = ConcatDataset(tuple(self.dict_dset_te.values()))
-        self._loader_te = mk_loader(dset_te, args.bs, drop_last=False)
-        self.count_domain_class()
+        self._loader_te = mk_loader(ddset_mix_val, args.bs) #FIXME
+        #self.count_domain_class()
 
     def count_domain_class(self):
         """

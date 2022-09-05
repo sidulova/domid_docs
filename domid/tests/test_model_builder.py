@@ -25,7 +25,7 @@ def model_compiler(args, model):
 
 
     for i, (tensor_x, vec_y, *_) in enumerate(ldr):
-        preds_c, probs_c, z, z_mu, z_sigma2_log, mu_c, log_sigma2_c, pi, logits = model_cnn._inference(tensor_x)
+        preds_c, probs_c, z, z_mu, z_sigma2_log, mu_c, log_sigma2_c, pi, logits = model._inference(tensor_x)
         mu, log_sigma2 = model.encoder(tensor_x)
         model.decoder(z_mu)
         loss = model.cal_loss(tensor_x)
@@ -50,3 +50,11 @@ def test_VaDE_linear():
                              i_c=i_c, i_w=i_w, i_h=i_h)
 
     model_compiler(args, model)
+
+def test_m2yd():
+    parser = mk_parser_main()
+    args = parser.parse_args(["--te_d", "0 1 2", "--tr_d"," 3 4 5 6 7 8 9"," --task","mnistcolor10",
+                              "--aname", "m2yd","--apath=domid/algos/builder_m2yd.py", "--nocu" ,"--gamma_y", "3500"
+])
+
+

@@ -113,7 +113,7 @@ class PerfCluster(PerfClassif):
                 x_s, d_s = x_s.to(device), d_s.to(device)
                 pred = model_local.infer_d_v(x_s)
                 # asserts added mainly for debugging
-                assert pred.shape == d_s.shape
+                # assert pred.shape == d_s.shape
                 assert pred.shape[1] == model_local.d_dim
 
                 cluster_pred_scalar = pred.cpu().numpy().argmax(axis=1)

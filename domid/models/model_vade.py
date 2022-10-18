@@ -38,7 +38,7 @@ class ModelVaDE(nn.Module):
         else:
             self.encoder = ConvolutionalEncoder(zd_dim=zd_dim, num_channels=i_c, i_w=i_w, i_h=i_h).to(device)
             self.decoder = ConvolutionalDecoder(
-                prior=args.prior, zd_dim=zd_dim, d_dim=args.d_dim, h_dim=self.encoder.h_dim, num_channels=i_c
+                prior=args.prior, zd_dim=zd_dim, y_dim=3, h_dim=self.encoder.h_dim, num_channels=i_c
             ).to(device)
 
         self.log_pi = nn.Parameter(
@@ -127,9 +127,14 @@ class ModelVaDE(nn.Module):
         if self.args.prior == "Bern":
             L_rec = F.binary_cross_entropy(x_pro, x)
         else:
-            L_rec = torch.mean(torch.sum(torch.sum(torch.sum(log_sigma, 2), 2), 1), 0) + torch.mean(
-                torch.sum(torch.sum(torch.sum(0.5 * (x - x_pro) ** 2 / torch.exp(log_sigma) ** 2, 2), 2), 1), 0
-            )
+            sigma = torch.Tensor([0.9]).to(self.device) #mean sigma of all images
+            log_sigma_est = torch.log(sigma).to(self.device)
+            L_rec = torch.mean(
+                torch.sum(torch.sum(torch.sum(0.5 * (x - x_pro) ** 2 , 2), 2), 1), 0
+            )/sigma**2
+        #     L_rec = torch.mean(torch.sum(torch.sum(torch.sum(log_sigma, 2), 2), 1), 0) + torch.mean(
+        #         torch.sum(torch.sum(torch.sum(0.5 * (x - x_pro) ** 2 / torch.exp(log_sigma) ** 2, 2), 2), 1), 0
+        #     )
         # Note that the mean is taken over the batch dimension, and the sum over the spatial dimensions and the channels.
         # Thir is consistent with the computation of other terms of the ELBO loss below.
 

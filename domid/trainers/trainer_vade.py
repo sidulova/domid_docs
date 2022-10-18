@@ -27,7 +27,7 @@ class TrainerVADE(TrainerClassif):
         self.pretrain = pretrain
         self.pretraining_finished = not self.pretrain
         self.LR = aconf.lr
-        self.warmup_beta = 0.01
+        self.warmup_beta = 0.1
 
         if not self.pretraining_finished:
             self.optimizer = optim.Adam(
@@ -58,8 +58,8 @@ class TrainerVADE(TrainerClassif):
         p = Pretraining(self.model, self.device, self.loader_tr, self.i_h, self.i_w)
         acc_d, _ = p.epoch_val_acc()
 
-        if self.warmup_beta < 0.9 and self.pretraining_finished:
-            self.warmup_beta = self.warmup_beta + 0.02
+        if self.warmup_beta < 1 and self.pretraining_finished:
+            self.warmup_beta = self.warmup_beta + 0.1
 
         for i, (tensor_x, vec_y, vec_d, *other_vars) in enumerate(self.loader_tr):
             if len(other_vars) > 0:
@@ -71,8 +71,8 @@ class TrainerVADE(TrainerClassif):
             )
             self.optimizer.zero_grad()
 
-            if acc_d < self.thres and not self.pretraining_finished:
-                loss = p.pretrain_loss(tensor_x)
+            if epoch < self.thres and not self.pretraining_finished:
+                loss = p.pretrain_loss(tensor_x, vec_y)
             else:
                 if not self.pretraining_finished:
                     self.pretraining_finished = True
@@ -80,15 +80,15 @@ class TrainerVADE(TrainerClassif):
                     self.optimizer = optim.Adam(
                         self.model.parameters(),
                         lr=self.LR,
-                        betas=(0.5, 0.9),
-                        weight_decay=0.0001,
+                        # betas=(0.5, 0.9),
+                        # weight_decay=0.0001,
                     )
 
                     print("".join(["#"] * 60))
                     print("Epoch {}: Finished pretraining and starting to use ELBO loss.".format(epoch))
                     print("".join(["#"] * 60))
 
-                loss = self.model.cal_loss(tensor_x, self.warmup_beta)
+                loss = self.model.cal_loss(tensor_x, vec_y, self.warmup_beta)
 
             loss = loss.sum()
             loss.backward()
@@ -96,7 +96,7 @@ class TrainerVADE(TrainerClassif):
             self.epo_loss_tr += loss.cpu().detach().item()
             self.writer.add_scalar('Loss', loss, epoch)
 
-        preds, z_mu, z, _, _, x_pro = self.model.infer_d_v_2(tensor_x)
+        preds, z_mu, z, _, _, x_pro = self.model.infer_d_v_2(tensor_x, vec_y)
         name = "Output of the decoder" + str(epoch)
         imgs = torch.cat((tensor_x[0:8, :, :, :], x_pro[0:8, :, :, :],), 0)
         self.writer.add_images(name, imgs, epoch)

@@ -38,7 +38,7 @@ class ModelVaDE(nn.Module):
         else:
             self.encoder = ConvolutionalEncoder(zd_dim=zd_dim, num_channels=i_c, i_w=i_w, i_h=i_h).to(device)
             self.decoder = ConvolutionalDecoder(
-                prior=args.prior, zd_dim=zd_dim, h_dim=self.encoder.h_dim, num_channels=i_c
+                prior=args.prior, zd_dim=zd_dim, d_dim=args.d_dim, h_dim=self.encoder.h_dim, num_channels=i_c
             ).to(device)
 
         self.log_pi = nn.Parameter(
@@ -91,26 +91,28 @@ class ModelVaDE(nn.Module):
         preds, *_ = self._inference(x)
         return preds.cpu().detach()
 
-    def infer_d_v_2(self, x):
+    def infer_d_v_2(self, x, y):
         """
         Used for tensorboard visualizations only.
         """
         results = self._inference(x)
-        x_pro, *_ = self.decoder(results[2])
+        z = torch.cat((results[2], y), 1)
+        x_pro, *_ = self.decoder(z)
         preds, probs, z, z_mu, z_sigma2_log, mu_c, log_sigma2_c, pi, logits = (r.cpu().detach() for r in results)
         return preds, z_mu, z, log_sigma2_c, probs, x_pro
 
-    def cal_loss(self, x, warmup_beta):
+    def cal_loss(self, x, y, warmup_beta):
         """Function that is called in trainer_vade to calculate loss
         :param x: tensor with input data
         :return: ELBO loss
         """
-        return self.ELBO_Loss(x, warmup_beta)
+        return self.ELBO_Loss(x, y, warmup_beta)
 
-    def pretrain_loss(self, x):
+    def pretrain_loss(self, x, y):
         Loss = nn.MSELoss()
         z_mu, z_sigma2_log = self.encoder(x)
         z = torch.randn_like(z_mu) * torch.exp(z_sigma2_log / 2) + z_mu
+        z = torch.cat((z, y), 1)
         x_pro, *_ = self.decoder(z)
         loss = Loss(x, x_pro)
         return loss
@@ -136,7 +138,7 @@ class ModelVaDE(nn.Module):
         self.loss_epoch += 1
         return L_rec
 
-    def ELBO_Loss(self, x, warmup_beta):
+    def ELBO_Loss(self, x, y, warmup_beta):
         """ELBO loss function
         Using SGVB estimator and the reparametrization trick calculates ELBO loss.
         Calculates loss between encoded input and input using ELBO equation (12) in the papaer.
@@ -149,7 +151,9 @@ class ModelVaDE(nn.Module):
 
         L_rec = 0.0
         for l in range(self.L):
-            z = torch.randn_like(z_mu) * torch.exp(z_sigma2_log / 2) + z_mu  # shape [batch_size, self.zd_dim]
+            z = torch.randn_like(z_mu) * torch.exp(z_sigma2_log / 2) + z_mu
+            z = torch.cat((z, y), 1)# shape [batch_size, self.zd_dim]
+
             x_pro, log_sigma = self.decoder(z)  # x_pro, mu, sigma
             L_rec += self.reconstruction_loss(x, x_pro, log_sigma)
 
@@ -157,7 +161,7 @@ class ModelVaDE(nn.Module):
         Loss = L_rec * x.size(1)
         # --> this is the -"first line" of eq (12) in the paper with additional averaging over the batch.
 
-        Loss += 0.5 * torch.mean(
+        Loss += 0.5 * warmup_beta*torch.mean(
             torch.sum(
                 probs
                 * torch.sum(
@@ -176,12 +180,12 @@ class ModelVaDE(nn.Module):
         # the mean is over the batch
         # --> overall, this is -"second line of eq. (12)" with additional mean over the batch
 
-        Loss -= torch.mean(
+        Loss -= warmup_beta*torch.mean(
             torch.sum(probs * torch.log(pi.unsqueeze(0) / (probs + eps)), 1)
         )  # FIXME: (+eps) is a hack to avoid NaN. Is there a better way?
         # dimensions: [batch_size, d_dim] * log([1, d_dim] / [batch_size, d_dim]), where the sum is over d_dim dimensions --> [batch_size] --> mean over the batch --> a scalar
 
-        Loss -= 0.5 * torch.mean(torch.sum(1.0 + z_sigma2_log, 1))
+        Loss -= 0.5 * warmup_beta* torch.mean(torch.sum(1.0 + z_sigma2_log, 1))
         # dimensions: mean( sum( [batch_size, zd_dim], 1 ) ) where the sum is over zd_dim dimensions and mean over the batch
         # --> overall, this is -"third line of eq. (12)" with additional mean over the batch
 

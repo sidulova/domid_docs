@@ -11,7 +11,7 @@ from domid.compos.linear_VAE import LinearDecoder, LinearEncoder
 
 
 class ModelVaDE(nn.Module):
-    def __init__(self, zd_dim, d_dim, device, L, i_c, i_h, i_w, args):
+    def __init__(self, zd_dim, d_dim, device, L, i_c, i_h, i_w, args, dim_inject_y=3):
         """
         VaDE model (Jiang et al. 2017 "Variational Deep Embedding:
         An Unsupervised and Generative Approach to Clustering") with
@@ -38,12 +38,17 @@ class ModelVaDE(nn.Module):
             self.decoder = LinearDecoder(prior=args.prior, zd_dim=zd_dim, input_dim=(i_c, i_h, i_w)).to(device)
         else:
             if args.path_to_domain==None:
-                domain_dim = 0
+                dim_inject_domain = 0
             else:
-                domain_dim = args.d_dim
+                dim_inject_domain = args.d_dim
             self.encoder = ConvolutionalEncoder(zd_dim=zd_dim, num_channels=i_c, i_w=i_w, i_h=i_h).to(device)
             self.decoder = ConvolutionalDecoder(
-                prior=args.prior, zd_dim=zd_dim,y_dim= 3,domain_dim = domain_dim, h_dim=self.encoder.h_dim, num_channels=i_c
+                prior=args.prior,
+                zd_dim=zd_dim,
+                y_dim=dim_inject_y,
+                domain_dim=dim_inject_domain,
+                h_dim=self.encoder.h_dim,
+                num_channels=i_c
             ).to(device)
         print(self.encoder)
         print(self.decoder)
@@ -158,11 +163,11 @@ class ModelVaDE(nn.Module):
            #  print('constant infront of MSE',  torch.sum(torch.exp(log_sigma)**2))
            #  print('x pro min/max/mean', torch.min(x_pro), torch.max(x_pro), torch.mean(x_pro))
            #  print('log_sigma min/max/mean',torch.min(log_sigma), 'max',torch.max(log_sigma), 'mean', torch.mean(log_sigma))
-            
+
             # L_rec = torch.mean(torch.sum(torch.sum(torch.sum(log_sigma, 2), 2), 1), 0) + torch.mean(
             #     torch.sum(torch.sum(torch.sum(0.5 * (x - x_pro) ** 2 / torch.exp(log_sigma) ** 2, 2), 2), 1), 0
             # )
-             
+
             sigma = torch.Tensor([0.9]).to(self.device) #mean sigma of all images
             log_sigma_est = torch.log(sigma).to(self.device)
             L_rec = torch.mean(
@@ -170,17 +175,17 @@ class ModelVaDE(nn.Module):
             )/sigma**2
             #L_rec = F.mse_loss(x_pro, x)
             # print(L_rec, L_rec0)
-            
-            
+
+
             # print('L rec', L_rec)
             # print("#"*10)
             # L_rec = torch.sum(log_sigma)*1/log_sigma.shape[0]+F.mse_loss(x, x_pro)*(log_sigma.shape[0]/torch.sum(torch.exp(log_sigma)**2))
-            
+
             #L_rec = F.mse_loss(x, x_pro)#*(log_sigma.shape[0]/torch.sum(torch.exp(log_sigma)**2))
-            
+
         # Note that the mean is taken over the batch dimension, and the sum over the spatial dimensions and the channels.
         # Thir is consistent with the computation of other terms of the ELBO loss below.
-        
+
 
         return L_rec
 
@@ -205,7 +210,7 @@ class ModelVaDE(nn.Module):
 
             x_pro, log_sigma = self.decoder(zy)  # x_pro, mu, sigma
             L_rec += self.reconstruction_loss(x, x_pro, log_sigma)
-            
+
 
         L_rec /= self.L
         Loss = L_rec * x.size(1)
@@ -238,8 +243,8 @@ class ModelVaDE(nn.Module):
         Loss -= 0.5 * warmup_beta*torch.mean(torch.sum(1.0 + z_sigma2_log, 1))
         # dimensions: mean( sum( [batch_size, zd_dim], 1 ) ) where the sum is over zd_dim dimensions and mean over the batch
         # --> overall, this is -"third line of eq. (12)" with additional mean over the batch
-        
-        
+
+
         return Loss
 
     def gaussian_pdfs_log(self, x, mus, log_sigma2s):

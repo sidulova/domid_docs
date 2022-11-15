@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 import tensorboardX
 import torch
@@ -11,7 +12,7 @@ from domid.compos.linear_VAE import LinearDecoder, LinearEncoder
 
 
 class ModelVaDE(nn.Module):
-    def __init__(self, zd_dim, d_dim, device, L, i_c, i_h, i_w, args, dim_inject_y=3):
+    def __init__(self, zd_dim, d_dim, device, L, i_c, i_h, i_w, args):
         """
         VaDE model (Jiang et al. 2017 "Variational Deep Embedding:
         An Unsupervised and Generative Approach to Clustering") with
@@ -32,21 +33,28 @@ class ModelVaDE(nn.Module):
         self.args = args
         self.loss_epoch = 0
 
+        self.dim_inject_y = 0
+
+        if self.args.dim_inject_y:
+            self.dim_inject_y = self.args.dim_inject_y
+
+        self.dim_inject_domain = 0
+        if self.args.path_to_domain:    # FIXME: one can simply read from the file to find out the injected dimension
+            self.dim_inject_domain = args.d_dim   # FIXME: allow arbitrary domain vector to be injected
+
 
         if self.args.model == "linear":
             self.encoder = LinearEncoder(zd_dim=zd_dim, input_dim=(i_c, i_h, i_w)).to(device)
             self.decoder = LinearDecoder(prior=args.prior, zd_dim=zd_dim, input_dim=(i_c, i_h, i_w)).to(device)
+            if self.dim_inject_domain or self.dim_inject_y:
+                warnings.warn("linear model decoder does not support label injection")
         else:
-            if args.path_to_domain==None:
-                dim_inject_domain = 0
-            else:
-                dim_inject_domain = args.d_dim
             self.encoder = ConvolutionalEncoder(zd_dim=zd_dim, num_channels=i_c, i_w=i_w, i_h=i_h).to(device)
             self.decoder = ConvolutionalDecoder(
                 prior=args.prior,
                 zd_dim=zd_dim,
-                y_dim=dim_inject_y,
-                domain_dim=dim_inject_domain,
+                y_dim=self.dim_inject_y,
+                domain_dim=self.dim_inject_domain,
                 h_dim=self.encoder.h_dim,
                 num_channels=i_c
             ).to(device)

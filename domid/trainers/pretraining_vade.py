@@ -46,6 +46,7 @@ class Pretraining():
             for tensor_x, vec_y, vec_d, machine, img_locs, pred_domain in self.loader_tr:
                 tensor_x = tensor_x.to(self.device)
 
+
                 if self.is_inject_domain:
                     if len(vec_y) + len(pred_domain) == self.args.dim_inject_y:
                         inject_tensor = torch.cat(vec_y, pred_domain)

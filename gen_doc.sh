@@ -2,7 +2,7 @@
 # sphinx-quickstart
 cd docs
 pip install -r requirements.txt
-sphinx-apidoc -f -o . ../domainlab  # output path is current . directory (docs), module path
+sphinx-apidoc -f -o . ../domid  # output path is current . directory (docs), module path
 make clean
 make html
 #mkdir -p build/html/figs

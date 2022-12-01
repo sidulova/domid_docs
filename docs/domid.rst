@@ -7,8 +7,14 @@ Subpackages
 .. toctree::
    :maxdepth: 4
 
+   domid.algos
    domid.compos
+   domid.dsets
+   domid.models
+   domid.tasks
    domid.tests
+   domid.trainers
+   domid.utils
 
 Submodules
 ----------

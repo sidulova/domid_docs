@@ -1,6 +1,8 @@
 #!/bin/bash
 # sphinx-quickstart
 cd docs
+pip install -r ../DomainLab/requirements.txt
+pip install -r ../requirements.txt
 pip install -r requirements.txt
 sphinx-apidoc -f -o . ../domid  # output path is current . directory (docs), module path
 make clean

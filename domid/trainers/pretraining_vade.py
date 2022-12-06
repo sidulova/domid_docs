@@ -47,16 +47,22 @@ class Pretraining():
                 if len(other_vars)>0:
                     machine, img_locs, pred_domain = other_vars #Because of the MNIST color is implemented rn
 
-                if self.is_inject_domain:
+                if not self.is_inject_domain:
+                    inject_tensor = []
+                else:
                     # pred_domain is from loader_tr, we decide here wether we inject
                     # both class label and domain label or only class label, or
                     # nothing
-                    if vec_y.shape[1] + pred_domain.shape[1] == self.args.dim_inject_y and pred_domain.shape[1]!=0:
-                        inject_tensor = torch.cat(vec_y, pred_domain)
-                    elif vec_y.shape[1] == self.args.dim_inject_y:
-                        inject_tensor = vec_y
-                else:
-                    inject_tensor = []
+                    if len(pred_domain) > 1:
+                        if vec_y.shape[1] + pred_domain.shape[1] == self.args.dim_inject_y:
+                            inject_tensor = torch.cat(vec_y, pred_domain)
+                        else:
+                            raise ValueError("Dimension of vec_y and pred_domain does not match dim_inject_y")
+                    else:
+                        if vec_y.shape[1] == self.args.dim_inject_y:
+                            inject_tensor = vec_y
+                        else:
+                            raise ValueError("Dimension of vec_y does not match dim_inject_y")
                 # only use the encoder to get latent representations, which is
                 # later fed into GMM. (hint: infer_d_v_2 does use decoder but this is
                 # not connected to computational graph)

@@ -72,8 +72,6 @@ class TrainerVADE(TrainerClassif):
 
             if len(other_vars) > 0:
                 machine, path, pred_domain = other_vars
-                if len(pred_domain) > 1:
-                    pred_domain = pred_domain.to(self.device)
 
             tensor_x, vec_y, vec_d = (
                 tensor_x.to(self.device),
@@ -86,13 +84,17 @@ class TrainerVADE(TrainerClassif):
 
             inject_tensor = []
             if self.args.dim_inject_y > 0:
-
-                if len(pred_domain) > 1 and vec_y.shape[1] + pred_domain.shape[1] == self.args.dim_inject_y:
-                    inject_tensor = torch.cat(vec_y, pred_domain)
-                elif vec_y.shape[1] == self.args.dim_inject_y:
-                    inject_tensor = vec_y
+                if len(pred_domain) > 1:
+                    pred_domain = pred_domain.to(self.device)
+                    if vec_y.shape[1] + pred_domain.shape[1] == self.args.dim_inject_y:
+                        inject_tensor = torch.cat(vec_y, pred_domain)
+                    else:
+                        raise ValueError("Dimension of vec_y and pred_domain does not match dim_inject_y")
                 else:
-                    raise RuntimeError("dimension does not match!")
+                    if vec_y.shape[1] == self.args.dim_inject_y:
+                        inject_tensor = vec_y
+                    else:
+                        raise ValueError("Dimension of vec_y does not match dim_inject_y")
 
             # __________________Pretrain/ELBO loss____________
             if epoch < self.thres and not self.pretraining_finished:

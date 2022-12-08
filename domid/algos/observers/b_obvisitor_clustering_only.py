@@ -1,3 +1,4 @@
+import warnings
 from domid.algos.observers.c_obvisitor_clustering import ObVisitor
 #from domainlab.algos.observers.b_obvisitor import ObVisitor
 from domid.utils.perf_cluster import PerfCluster
@@ -39,3 +40,4 @@ class ObVisitorClusteringOnly(ObVisitor):
         acc_val, conf_mat_val = PerfCluster.cal_acc(model_ld, self.loader_val, self.device)
         self.acc_val = acc_val
         print("persisted model clustering acc: ", acc_val)
+

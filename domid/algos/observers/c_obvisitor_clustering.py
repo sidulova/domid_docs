@@ -93,7 +93,7 @@ class ObVisitor(AObVisitor):
             warnings.warn("failed to load pesistent model")
 
         if isinstance(self.exp.task, NodeTaskFolderClassNaMismatch):
-           pred2file(self.loader_te, self.host_trainer.model, self.device)
+            pred2file(self.loader_te, self.host_trainer.model, self.device)
 
     def clean_up(self):
         """
@@ -101,6 +101,7 @@ class ObVisitor(AObVisitor):
         """
 
         print('was in clean up in c obvisitor, but did not clean anything')
+
         if not self.keep_model:
             try:
                 self.exp.visitor.remove("epoch")    # the last epoch

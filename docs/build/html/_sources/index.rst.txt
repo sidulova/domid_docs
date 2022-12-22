@@ -57,6 +57,7 @@ Model is built from the building blocks in domid/compos directory. However, the 
 
 Training a Model
 =================
+
 Training of the model consists of Observer and Trainer.
 
 .. toctree::

@@ -12,13 +12,14 @@ Welcome to DomId's documentation!
 
 About DomID
 ===============
+
 The Variational Deep Embedding (VaDE) model is trained to learn lower-dimensional representations of images based on a Mixture-of-Gaussians latent space prior distribution while optimizing cluster assignments. In this package, examples on multiple dataset has been presented.
 
 .. toctree::
    :maxdepth: 1
-   :caption: About
+   :caption: More information about the models
 
-about_link
+   about_link
 
 
 DomainLab

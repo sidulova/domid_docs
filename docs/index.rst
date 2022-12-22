@@ -20,6 +20,7 @@ The Variational Deep Embedding (VaDE) model is trained to learn lower-dimensiona
 
 about_link
 
+
 DomainLab
 ==============
 DomainLab is a submodule that has been used to develop DomID, and it aims at learning domain invariant features by utilizing data from multiple domains so the learned feature can generalize to new unseen domains.
@@ -53,9 +54,11 @@ Model is built from the building blocks in domid/compos directory. However, the 
    domid.compos
    domid.models
 
+
 Training a Model
 =================
 Training of the model consists of Observer and Trainer.
+
 .. toctree::
    :maxdepth: 2
    :caption: Training a Model

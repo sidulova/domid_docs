@@ -10,6 +10,7 @@ Welcome to DomId's documentation!
    :maxdepth: 1
    :caption: Contents:
 
+
 About DomID
 ===============
 
@@ -29,6 +30,7 @@ DomainLab is a submodule that has been used to develop DomID, and it aims at lea
 .. toctree::
    :maxdepth: 1
    :caption: DomainLab
+
 
 
 Loading a Datasets and Defining a Task
